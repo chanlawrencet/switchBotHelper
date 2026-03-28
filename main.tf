@@ -91,11 +91,11 @@ resource "aws_lambda_permission" "function_url_invoke" {
 }
 
 resource "aws_lambda_permission" "function_invoke" {
-  statement_id           = "AllowPublicInvokeForFunctionUrl"
-  action                 = "lambda:InvokeFunction"
-  function_name          = aws_lambda_function.door_opener.function_name
-  principal              = "*"
-  function_url_auth_type = "NONE"
+  statement_id             = "AllowPublicInvokeForFunctionUrl"
+  action                   = "lambda:InvokeFunction"
+  function_name            = aws_lambda_function.door_opener.function_name
+  principal                = "*"
+  invoked_via_function_url = true
 }
 
 resource "aws_cloudwatch_log_group" "door_opener" {
