@@ -46,3 +46,6 @@ __pycache__/
 *.pyo
 *.pyd
 .python-version
+
+# Local helper environment
+.env

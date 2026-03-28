@@ -35,6 +35,8 @@ If the link is valid and not expired, Lambda calls the SwitchBot API and sends a
 ├── terraform.tfvars.example
 ├── install.sh
 ├── generate.py
+├── list_devices.py
+├── load_tfvars.sh
 └── lambda/
     ├── app.py
     └── requirements.txt
@@ -67,6 +69,32 @@ device_id           = "YOUR_DEVICE_ID"
 link_ttl_seconds    = 900
 ```
 
+If you do not know your `device_id` yet, you can list the devices on your SwitchBot account first.
+
+Load the values from `terraform.tfvars` into your current shell:
+
+```bash
+source ./load_tfvars.sh
+```
+
+Then run:
+
+```bash
+python3 list_devices.py
+```
+
+The script prints both regular devices and infrared remotes as JSON. Use the `deviceId` for the Bot you want to press and copy that value into `terraform.tfvars` as `device_id`.
+
+`load_tfvars.sh` exports these variables from `terraform.tfvars` when present:
+
+- `AWS_REGION`
+- `FUNCTION_NAME`
+- `SWITCHBOT_TOKEN`
+- `SWITCHBOT_SECRET`
+- `LINK_SIGNING_SECRET`
+- `DEVICE_ID`
+- `LINK_TTL_SECONDS`
+
 ## Install Lambda dependencies
 
 Before deploying, run the repo install script:
@@ -90,21 +118,31 @@ terraform init
 terraform apply
 ```
 
-After apply, Terraform will output the Lambda Function URL.
+After apply, Terraform will:
+
+- print the deployed `BASE_URL` more clearly in the outputs
+- write a local `.env` file with `BASE_URL=...`
 
 ## Generate a visitor link
 
-Set these locally:
+Load the Terraform values into your shell:
 
 ```bash
-export BASE_URL="https://YOUR_FUNCTION_URL.lambda-url.us-east-1.on.aws/"
-export LINK_SIGNING_SECRET="same-value-as-terraform"
+source ./load_tfvars.sh
 ```
 
 Then run:
 
 ```bash
 python3 generate.py
+```
+
+You can optionally override the default TTL from the command line:
+
+```bash
+python3 generate.py --hours 4
+python3 generate.py --days 2
+python3 generate.py --weeks 1
 ```
 
 Example output:
