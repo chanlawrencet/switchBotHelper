@@ -1,0 +1,10 @@
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+lambda.zip
+lambda/.venv/
+lambda/__pycache__/
+lambda/*.pyc
+lambda/bin/
+lambda/lib/
+lambda/share/
