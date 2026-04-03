@@ -167,9 +167,7 @@ If `notification_email` is configured and confirmed, Lambda sends an SNS email e
 
 The notification includes:
 
-- the raw `exp` value from the link
 - the expiry time in Eastern Time
-- the expiry time in UTC
 - the configured `device_id`
 
 If `pushover_user_key` and `pushover_app_token` are configured, Lambda also sends a direct Pushover notification on each successful unlock.
