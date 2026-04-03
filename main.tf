@@ -22,7 +22,9 @@ provider "aws" {
 }
 
 locals {
-  function_name = var.function_name
+  function_name         = var.function_name
+  notifications_enabled = trimspace(var.notification_email) != ""
+  pushover_enabled      = trimspace(var.pushover_user_key) != "" && trimspace(var.pushover_app_token) != ""
 }
 
 resource "aws_iam_role" "lambda_exec" {
@@ -47,6 +49,24 @@ resource "aws_iam_role_policy_attachment" "basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy" "sns_publish" {
+  count = local.notifications_enabled ? 1 : 0
+
+  name = "${local.function_name}-sns-publish"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = aws_sns_topic.unlock_notifications[0].arn
+      }
+    ]
+  })
+}
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/lambda"
@@ -65,11 +85,15 @@ resource "aws_lambda_function" "door_opener" {
 
   environment {
     variables = {
-      SWITCHBOT_TOKEN     = var.switchbot_token
-      SWITCHBOT_SECRET    = var.switchbot_secret
-      LINK_SIGNING_SECRET = var.link_signing_secret
-      DEVICE_ID           = var.device_id
-      LINK_TTL_SECONDS    = tostring(var.link_ttl_seconds)
+      SWITCHBOT_TOKEN        = var.switchbot_token
+      SWITCHBOT_SECRET       = var.switchbot_secret
+      LINK_SIGNING_SECRET    = var.link_signing_secret
+      DEVICE_ID              = var.device_id
+      LINK_TTL_SECONDS       = tostring(var.link_ttl_seconds)
+      NOTIFICATION_TOPIC_ARN = local.notifications_enabled ? aws_sns_topic.unlock_notifications[0].arn : ""
+      PUSHOVER_USER_KEY      = local.pushover_enabled ? var.pushover_user_key : ""
+      PUSHOVER_APP_TOKEN     = local.pushover_enabled ? var.pushover_app_token : ""
+      PUSHOVER_DEVICE        = trimspace(var.pushover_device)
     }
   }
 }
@@ -105,6 +129,20 @@ resource "aws_lambda_permission" "function_invoke" {
 resource "aws_cloudwatch_log_group" "door_opener" {
   name              = "/aws/lambda/${aws_lambda_function.door_opener.function_name}"
   retention_in_days = 14
+}
+
+resource "aws_sns_topic" "unlock_notifications" {
+  count = local.notifications_enabled ? 1 : 0
+
+  name = "${local.function_name}-unlock-notifications"
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  count = local.notifications_enabled ? 1 : 0
+
+  topic_arn = aws_sns_topic.unlock_notifications[0].arn
+  protocol  = "email"
+  endpoint  = trimspace(var.notification_email)
 }
 
 resource "local_file" "local_env" {

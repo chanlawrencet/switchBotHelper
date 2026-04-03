@@ -32,3 +32,25 @@ variable "link_ttl_seconds" {
   type    = number
   default = 900
 }
+
+variable "notification_email" {
+  type    = string
+  default = ""
+}
+
+variable "pushover_user_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "pushover_app_token" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "pushover_device" {
+  type    = string
+  default = ""
+}

@@ -67,6 +67,10 @@ switchbot_secret    = "YOUR_SWITCHBOT_SECRET"
 link_signing_secret = "REPLACE_WITH_A_RANDOM_SECRET"
 device_id           = "YOUR_DEVICE_ID"
 link_ttl_seconds    = 900
+notification_email  = "you@example.com"
+pushover_user_key   = ""
+pushover_app_token  = ""
+pushover_device     = ""
 ```
 
 If you do not know your `device_id` yet, you can list the devices on your SwitchBot account first.
@@ -122,6 +126,10 @@ After apply, Terraform will:
 
 - print the deployed `BASE_URL` more clearly in the outputs
 - write a local `.env` file with `BASE_URL=...`
+- optionally configure unlock email notifications if `notification_email` is set
+- pass optional Pushover settings through to Lambda if `pushover_user_key` and `pushover_app_token` are set
+
+If you set `notification_email`, AWS SNS will send a confirmation email after `terraform apply`. You must click the confirmation link in that email before notifications start arriving.
 
 ## Generate a visitor link
 
@@ -152,6 +160,33 @@ https://example.lambda-url.us-east-1.on.aws/?exp=1712345678&sig=...
 ```
 
 Send that URL to your visitor.
+
+## Notifications
+
+If `notification_email` is configured and confirmed, Lambda sends an SNS email each time a valid door unlock link is used.
+
+The notification includes:
+
+- the raw `exp` value from the link
+- the expiry time in Eastern Time
+- the expiry time in UTC
+- the configured `device_id`
+
+If `pushover_user_key` and `pushover_app_token` are configured, Lambda also sends a direct Pushover notification on each successful unlock.
+
+Pushover setup:
+
+1. Put your Pushover user key into `pushover_user_key`
+2. Create a Pushover application at `https://pushover.net/apps` and put its API token into `pushover_app_token`
+3. Optionally set `pushover_device` if you want to target only one device
+4. Run `terraform apply`
+
+Pushover messages include:
+
+- the configured `device_id`
+- the expiry time in Eastern Time
+- the expiry time in UTC
+- the raw `exp` value from the link
 
 ## Security notes
 

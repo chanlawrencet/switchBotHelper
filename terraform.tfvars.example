@@ -5,3 +5,7 @@ switchbot_secret    = "YOUR_SWITCHBOT_SECRET"
 link_signing_secret = "replace-with-a-random-long-string"
 device_id           = "CE2A80866523"
 link_ttl_seconds    = 900
+notification_email  = "you@example.com"
+pushover_user_key   = ""
+pushover_app_token  = ""
+pushover_device     = ""

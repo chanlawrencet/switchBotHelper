@@ -1,9 +1,11 @@
 import base64
+import boto3
 import datetime
 import html as html_lib
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 import uuid
@@ -12,12 +14,21 @@ from zoneinfo import ZoneInfo
 import requests
 
 API_BASE = "https://api.switch-bot.com"
+PUSHOVER_API_URL = "https://api.pushover.net/1/messages.json"
 
 SWITCHBOT_TOKEN = os.environ["SWITCHBOT_TOKEN"]
 SWITCHBOT_SECRET = os.environ["SWITCHBOT_SECRET"]
 LINK_SIGNING_SECRET = os.environ["LINK_SIGNING_SECRET"]
 DEVICE_ID = os.environ.get("DEVICE_ID", "CE2A80866523")
 LINK_TTL_SECONDS = int(os.environ.get("LINK_TTL_SECONDS", "900"))
+NOTIFICATION_TOPIC_ARN = os.environ.get("NOTIFICATION_TOPIC_ARN", "")
+PUSHOVER_USER_KEY = os.environ.get("PUSHOVER_USER_KEY", "")
+PUSHOVER_APP_TOKEN = os.environ.get("PUSHOVER_APP_TOKEN", "")
+PUSHOVER_DEVICE = os.environ.get("PUSHOVER_DEVICE", "")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+SNS = boto3.client("sns")
 
 
 def make_switchbot_headers(token: str, secret: str) -> dict:
@@ -244,6 +255,63 @@ def success_page(exp: str | None) -> str:
 </html>"""
 
 
+def send_unlock_notification(exp: str | None) -> None:
+    message = {
+        "event": "door_unlock_requested",
+        "device_id": DEVICE_ID,
+        "expires_at_est": format_expiration_est(exp),
+        "expires_at_utc": format_expiration(exp),
+        "exp": exp or "Unknown",
+    }
+
+    if NOTIFICATION_TOPIC_ARN:
+        try:
+            SNS.publish(
+                TopicArn=NOTIFICATION_TOPIC_ARN,
+                Subject="Front door unlock link used",
+                Message=json.dumps(message, indent=2),
+            )
+            logger.info("unlock_notification_sent %s", json.dumps(message, sort_keys=True))
+        except Exception:
+            logger.exception(
+                "unlock_notification_failed %s",
+                json.dumps(message, sort_keys=True),
+            )
+
+    if not (PUSHOVER_USER_KEY and PUSHOVER_APP_TOKEN):
+        return
+
+    pushover_payload = {
+        "token": PUSHOVER_APP_TOKEN,
+        "user": PUSHOVER_USER_KEY,
+        "title": "Front door unlock link used",
+        "message": (
+            f"Device: {DEVICE_ID}\n"
+            f"Expires (ET): {message['expires_at_est']}\n"
+        ),
+        "priority": 0,
+    }
+    if PUSHOVER_DEVICE:
+        pushover_payload["device"] = PUSHOVER_DEVICE
+
+    try:
+        response = requests.post(
+            PUSHOVER_API_URL,
+            data=pushover_payload,
+            timeout=15,
+        )
+        response.raise_for_status()
+        logger.info(
+            "pushover_notification_sent %s",
+            json.dumps(message, sort_keys=True),
+        )
+    except Exception:
+        logger.exception(
+            "pushover_notification_failed %s",
+            json.dumps(message, sort_keys=True),
+        )
+
+
 def lambda_handler(event, context):
     params = event.get("queryStringParameters") or {}
     exp = params.get("exp")
@@ -255,6 +323,7 @@ def lambda_handler(event, context):
     try:
         result = press_bot()
         if result.get("statusCode") == 100:
+            send_unlock_notification(exp)
             return html(200, success_page(exp))
         return html(
             502,
