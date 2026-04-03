@@ -38,6 +38,7 @@ If the link is valid and not expired, Lambda calls the SwitchBot API and sends a
 ├── generate.py
 ├── list_devices.py
 ├── load_tfvars.sh
+├── scriptable_generate_link.js
 └── lambda/
     ├── app.py
     └── requirements.txt
@@ -168,6 +169,24 @@ https://example.lambda-url.us-east-1.on.aws/?exp=1712345678&sig=...
 ```
 
 Send that URL to your visitor.
+
+## iPhone Scriptable
+
+For non-technical use on iPhone, a ready-to-paste Scriptable script is included at [scriptable_generate_link.js](/Users/lawrencechan/coding/switchBotHelper/scriptable_generate_link.js).
+
+Setup:
+
+1. Install the Scriptable app on the iPhone
+2. Create a new script and paste in the contents of `scriptable_generate_link.js`
+3. Replace `BASE_URL` and `LINK_SIGNING_SECRET`
+4. Run the script from Scriptable or add it to the home screen
+
+The script lets the user:
+
+- choose `Delivery`, `Laundry`, or a custom purpose
+- enter a whole-number duration
+- choose `Hours`, `Days`, or `Weeks`
+- copy or share the generated link
 
 ## Notifications
 
