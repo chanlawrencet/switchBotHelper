@@ -119,7 +119,7 @@ def success_page(exp: str | None) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Door Signal Sent</title>
+  <title>Tap To Unlock Front Door</title>
   <style>
     :root {{
       color-scheme: light;
@@ -229,8 +229,11 @@ def success_page(exp: str | None) -> str:
 <body>
   <main>
     <div class="badge"><span class="dot"></span>Signal delivered</div>
-    <h1>Door signal sent</h1>
-    <p>The front door should now be unlocked. You can now close this page.</p>
+    <h1>Tap to unlock the front door</h1>
+    <p>
+      The front door should now be unlocking. It may take a few moments to
+      open. If nothing happens, refresh this page and try again.
+    </p>
     <section class="meta">
       <strong>Link Expires</strong>
       <span>{expires_at_est}</span>
