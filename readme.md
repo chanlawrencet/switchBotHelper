@@ -21,7 +21,8 @@ This project is designed for simple guest access:
 The Lambda expects two query parameters:
 
 - `exp`: Unix expiration timestamp
-- `sig`: HMAC signature of `exp`
+- `note`: Optional signed purpose label
+- `sig`: HMAC signature of `exp` and `note`
 
 If the link is valid and not expired, Lambda calls the SwitchBot API and sends a `press` command to the configured Bot.
 
@@ -153,6 +154,13 @@ python3 generate.py --days 2
 python3 generate.py --weeks 1
 ```
 
+You can also attach a signed purpose or note so it appears in notifications:
+
+```bash
+python3 generate.py --hours 4 --note "party"
+python3 generate.py --days 1 --note "dog walker"
+```
+
 Example output:
 
 ```text
@@ -168,7 +176,7 @@ If `notification_email` is configured and confirmed, Lambda sends an SNS email e
 The notification includes:
 
 - the expiry time in Eastern Time
-- the configured `device_id`
+- the optional signed purpose note
 
 If `pushover_user_key` and `pushover_app_token` are configured, Lambda also sends a direct Pushover notification on each successful unlock.
 
@@ -181,10 +189,8 @@ Pushover setup:
 
 Pushover messages include:
 
-- the configured `device_id`
 - the expiry time in Eastern Time
-- the expiry time in UTC
-- the raw `exp` value from the link
+- the optional signed purpose note
 
 ## Security notes
 

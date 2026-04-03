@@ -49,7 +49,11 @@ def make_switchbot_headers(token: str, secret: str) -> dict:
     }
 
 
-def verify_link(exp: str, sig: str) -> bool:
+def build_signed_payload(exp: str, note: str) -> str:
+    return f"{exp}\n{note}"
+
+
+def verify_link_with_note(exp: str, sig: str, note: str) -> bool:
     if not exp or not sig:
         return False
 
@@ -63,7 +67,7 @@ def verify_link(exp: str, sig: str) -> bool:
 
     expected = hmac.new(
         LINK_SIGNING_SECRET.encode("utf-8"),
-        exp.encode("utf-8"),
+        build_signed_payload(exp, note).encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
 
@@ -121,9 +125,17 @@ def format_expiration_est(exp: str | None) -> str:
     return expires_at.strftime("%Y-%m-%d %I:%M:%S %p %Z")
 
 
-def success_page(exp: str | None) -> str:
+def success_page(exp: str | None, note: str | None) -> str:
     expires_at_utc = html_lib.escape(format_expiration(exp))
     expires_at_est = html_lib.escape(format_expiration_est(exp))
+    note_html = ""
+    if note:
+        safe_note = html_lib.escape(note)
+        note_html = f"""
+    <section class="meta">
+      <strong>Purpose</strong>
+      <span>{safe_note}</span>
+    </section>"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -250,18 +262,17 @@ def success_page(exp: str | None) -> str:
       <span>{expires_at_est}</span>
       <small>{expires_at_utc}</small>
     </section>
+{note_html}
   </main>
 </body>
 </html>"""
 
 
-def send_unlock_notification(exp: str | None) -> None:
+def send_unlock_notification(exp: str | None, note: str | None) -> None:
     message = {
         "event": "door_unlock_requested",
-        "device_id": DEVICE_ID,
         "expires_at_est": format_expiration_est(exp),
-        "expires_at_utc": format_expiration(exp),
-        "exp": exp or "Unknown",
+        "note": note or "",
     }
 
     if NOTIFICATION_TOPIC_ARN:
@@ -286,8 +297,8 @@ def send_unlock_notification(exp: str | None) -> None:
         "user": PUSHOVER_USER_KEY,
         "title": "Front door unlock link used",
         "message": (
-            f"Device: {DEVICE_ID}\n"
-            f"Expires (ET): {message['expires_at_est']}\n"
+            f"Expires: {message['expires_at_est']}\n"
+            f"Purpose: {message['note'] or 'None'}\n"
         ),
         "priority": 0,
     }
@@ -316,15 +327,16 @@ def lambda_handler(event, context):
     params = event.get("queryStringParameters") or {}
     exp = params.get("exp")
     sig = params.get("sig")
+    note = params.get("note") or ""
 
-    if not verify_link(exp, sig):
+    if not verify_link_with_note(exp, sig, note):
         return html(403, "<h1>Link invalid or expired</h1>")
 
     try:
         result = press_bot()
         if result.get("statusCode") == 100:
-            send_unlock_notification(exp)
-            return html(200, success_page(exp))
+            send_unlock_notification(exp, note)
+            return html(200, success_page(exp, note))
         return html(
             502,
             f"<h1>SwitchBot error</h1><pre>{json.dumps(result, indent=2)}</pre>",

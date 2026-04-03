@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import os
 import time
+import urllib.parse
 
 BASE_URL = os.environ["BASE_URL"]
 LINK_SIGNING_SECRET = os.environ["LINK_SIGNING_SECRET"]
@@ -28,6 +29,10 @@ def parse_args() -> argparse.Namespace:
         type=float,
         help="Set the link expiration window in weeks.",
     )
+    parser.add_argument(
+        "--note",
+        help="Optional purpose or note to embed in the signed link.",
+    )
     return parser.parse_args()
 
 
@@ -47,13 +52,19 @@ def main() -> None:
     args = parse_args()
     ttl_seconds = resolve_ttl_seconds(args)
     exp = int(time.time()) + ttl_seconds
+    note = args.note or ""
+    signed_payload = f"{exp}\n{note}"
     sig = hmac.new(
         LINK_SIGNING_SECRET.encode("utf-8"),
-        str(exp).encode("utf-8"),
+        signed_payload.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
+    params = {"exp": str(exp), "sig": sig}
+    if note:
+        params["note"] = note
+    query = urllib.parse.urlencode(params)
 
-    print(f"{BASE_URL}?exp={exp}&sig={sig}")
+    print(f"{BASE_URL}?{query}")
 
 
 if __name__ == "__main__":
